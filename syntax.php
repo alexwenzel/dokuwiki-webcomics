@@ -30,68 +30,47 @@ class syntax_plugin_webcomics extends DokuWiki_Syntax_Plugin
       'date' => '2013-09-17',
       'name' => 'Webcomics Plugin',
       'desc' => 'It displays various Webcomics. Based on Dilbert Plugin.',
-      'url' => 'http://www.christophs-blog.de/dokuwiki-plugins/');
+      'url' => 'http://www.christophs-blog.de/dokuwiki-plugins/'
+    );
   }
 
   private function _listhd ($type)
   {
     require_once (DOKU_INC . 'inc/HTTPClient.php');
-    switch ($type)
-    {
-      case "XKCD":
-        $url = 'http://xkcd.com/rss.xml';
-        $pre = 'http://imgs.xkcd.com/comics/';
-        $post = '.png';
-        break;
-      case "GARFIELD":
-        $url = 'http://feeds.hafcom.nl/garfield.xml';
-        $pre = 'http://images.ucomics.com/comics/';
-        $post = '.gif';
-        break;
-      case "DILBERT":
-        $url = 'http://pipes.yahoo.com/pipes/pipe.run?_id=1fdc1d7a66bb004a2d9ebfedfb3808e2&_render=rss';
-        $pre = 'http://www.dilbert.com/dyn/str_strip/';
-        $post = '.gif';
-        break;
-      case "CYANIDE":
-        $url = 'http://pipes.yahoo.com/pipes/pipe.run?_id=9b91d1900e14d1caff163aa6fa1b24bd&_render=rss';
-        $pre = 'http://www.explosm.net/db/';
-        $post = '.png';
-        break;
-      case "SHACKLES":
-        $url = 'http://feeds2.feedburner.com/virtualshackles';
-        $pre = 'http://www.virtualshackles.com/img/';
-        $post = '.jpg';
-        break;
-      default:
-        return $type . " will be supported soon!";
+
+    $urls = array(
+      # "GARFIELD" => 'http://feeds.hafcom.nl/garfield.xml',
+      # "CYANIDE" => 'http://pipes.yahoo.com/pipes/pipe.run?_id=9b91d1900e14d1caff163aa6fa1b24bd&_render=rss',
+      "XKCD" => 'http://xkcd.com/rss.xml',
+      "DILBERT" => 'http://pipes.yahoo.com/pipes/pipe.run?_id=1fdc1d7a66bb004a2d9ebfedfb3808e2&_render=rss',
+      "SHACKLES" => 'http://feeds2.feedburner.com/virtualshackles',
+    );
+
+    if ( ! isset($urls[$type]) ) {
+      return "[{$type} - no url given]";
     }
 
-    $ch = new DokuHTTPClient();
-    $piece = $ch->get($url);
+    $ch    = new DokuHTTPClient();
+    $piece = $ch->get($urls[$type]);
+    $xml   = simplexml_load_string($piece);
 
-    $xml = simplexml_load_string($piece);
+    preg_match("/src=\"(.[^\"]*)\"/i", $xml->channel->item->description, $matches);
 
-    $a = explode($pre, (string) $xml->channel->item->description);
-    $b = explode($post, $a[1]);
+    if ( ! empty($matches) ) {
 
-    $feed_contents .= '<a href="' . $url . '" alt="">' . '<img src="' . $pre .
-      $b[0] . $post . '" alt=""/></a>' . "\n";
+      return '<img src="' . $matches[1] . '" alt=""/>';
+    }
 
-    return $feed_contents;
+    return "[{$type} - couldn't parse image tag]";
   }
 
   function connectTo ($mode)
   {
     $this->Lexer->addSpecialPattern('\[XKCD\]', $mode, 'plugin_webcomics');
-    $this->Lexer->addSpecialPattern('\[GARFIELD\]', $mode,
-      'plugin_webcomics');
-    $this->Lexer->addSpecialPattern('\[DILBERT\]', $mode,
-      'plugin_webcomics');
-    $this->Lexer->addSpecialPattern('\[SHACKLES\]', $mode,
-      'plugin_webcomics');
-    $this->Lexer->addSpecialPattern('\[CYANIDE\]', $mode,
-      'plugin_webcomics');
+    $this->Lexer->addSpecialPattern('\[GARFIELD\]', $mode, 'plugin_webcomics');
+    $this->Lexer->addSpecialPattern('\[DILBERT\]', $mode, 'plugin_webcomics');
+    $this->Lexer->addSpecialPattern('\[SHACKLES\]', $mode, 'plugin_webcomics');
+    $this->Lexer->addSpecialPattern('\[CYANIDE\]', $mode, 'plugin_webcomics');
   }
 
   function getType ()
@@ -112,12 +91,12 @@ class syntax_plugin_webcomics extends DokuWiki_Syntax_Plugin
 
   function render ($mode, &$renderer, $data)
   {
-
     if ($mode == 'xhtml')
     {
       $renderer->doc .= $this->_listhd($data[0]);
       return true;
     }
+
     return false;
   }
 }
